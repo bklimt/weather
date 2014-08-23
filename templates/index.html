@@ -1,0 +1,76 @@
+<html>
+  <head>
+  <meta name="viewport" content="width=device-width" />
+  <link rel="stylesheet" type="text/css" href="/js/ext/jquery.mobile-1.4.3.css" />
+  <script src="/js/ext/jquery-1.11.1.js"></script>
+  <script src="/js/ext/jquery.mobile-1.4.3.js"></script>
+  <script src="/js/ext/underscore.js"></script>
+  <script src="/js/ext/backbone.js"></script>
+  <script src="/js/volume.js"></script>
+  <script src="/js/lights.js"></script>
+  <script src="/js/range_view.js"></script>
+  <script src="/js/check_view.js"></script>
+  <script src="/js/light_view.js"></script>
+  <script>
+
+    $(function() {
+      new RangeView({
+        el: "#volume",
+        model: volume,
+        attr: "volume"
+      });
+
+      {{ range $id, $light := .Lights }}
+        new LightView({
+          el: "#light-{{ $id }}",
+          model: lights.add({
+            id: {{ $id }},
+            hue: {{ $light.State.Hue }},
+            sat: {{ $light.State.Sat }},
+            bri: {{ $light.State.Bri }},
+            on: {{ $light.State.On }}
+          })
+        });
+      {{ end }}
+    });
+
+  </script>
+  </head>
+  <body>
+    <div data-role="page">
+      <div data-role="main" class="ui-content">
+        <div data-role="fieldcontain">
+          <label for="volume">Volume</label>
+          <input type="range" min="0" max="100" value="{{ .Volume }}" id="volume"></input>
+        </div>
+
+        {{ range $id, $light := .Lights }}
+          <div id="light-{{ $id }}">
+            <fieldset>
+            <label>
+              <input type="checkbox" id="on" {{ if $light.State.On }} checked {{ end }}>{{ $light.Name }}
+            </label>
+
+            <div data-role="fieldcontain">
+              <label for="hue">Hue</label>
+              <input type="range" min="0" max="65535" value="{{ $light.State.Hue }}" id="hue"></input>
+            </div>
+            
+            <div data-role="fieldcontain">
+              <label for="sat">Sat</label>
+              <input type="range" min="0" max="255" value="{{ $light.State.Sat }}" id="sat"></input>
+            </div>
+            
+            <div data-role="fieldcontain">
+              <label for="bri">Bri</label>
+              <input type="range" min="0" max="255" value="{{ $light.State.Bri }}" id="bri"></input>
+            </div>
+            </fieldset>
+          </div>
+        {{ end }}
+      </div>
+    </div>
+
+    <div id="lights"></div>
+  </body>
+</html>
