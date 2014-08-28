@@ -7,16 +7,9 @@ import (
 	"github.com/bklimt/hue"
 	"github.com/bklimt/volume"
 	"github.com/gorilla/mux"
-	"html/template"
-	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
-	"path/filepath"
 )
-
-var philipsHue *hue.Hue
-var templates *template.Template
 
 func writeJsonError(w http.ResponseWriter, err error) {
 	var j struct {
@@ -41,116 +34,11 @@ func writeJsonResult(w http.ResponseWriter, result interface{}) {
 	fmt.Fprintf(w, "%s", s)
 }
 
-type light struct {
-	Id   string `json:"id"`
-	Name string `json:"name"`
-	On   bool   `json:"on"`
-	Hue  int    `json:"hue"`
-	Sat  int    `json:"sat"`
-	Bri  int    `json:"bri"`
-}
-
-func handleLightsGet(w http.ResponseWriter, r *http.Request) {
-	lights := &hue.GetLightsResponse{}
-	if err := philipsHue.GetLights(lights); err != nil {
-		writeJsonError(w, err)
-		return
-	}
-
-	var result []light
-	for id, _ := range *lights {
-		l := &hue.GetLightResponse{}
-		if err := philipsHue.GetLight(id, l); err != nil {
-			writeJsonError(w, err)
-			return
-		}
-		s := l.State
-		result = append(result, light{id, l.Name, s.On, s.Hue, s.Sat, s.Bri})
-	}
-
-	writeJsonResult(w, &result)
-}
-
-func handleLightPut(w http.ResponseWriter, r *http.Request) {
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		writeJsonError(w, err)
-		return
-	}
-
-	vars := mux.Vars(r)
-	id := vars["id"]
-
-	req := struct {
-		Hue *int
-		Sat *int
-		Bri *int
-		On  *bool
-	}{nil, nil, nil, nil}
-	err = json.Unmarshal(body, &req)
-	if err != nil {
-		writeJsonError(w, err)
-		return
-	}
-
-	l := &hue.PutLightRequest{}
-	if req.Hue != nil {
-		l.Hue = req.Hue
-	}
-	if req.Sat != nil {
-		l.Sat = req.Sat
-	}
-	if req.Bri != nil {
-		l.Bri = req.Bri
-	}
-	if req.On != nil {
-		l.On = req.On
-	}
-	if err := philipsHue.PutLight(id, l); err != nil {
-		writeJsonError(w, err)
-		return
-	}
-
-	res := struct{}{}
-	writeJsonResult(w, res)
-}
-
-func handleVolumeGet(w http.ResponseWriter, r *http.Request) {
-	if vol, err := volume.GetVolume(); err != nil {
-		writeJsonError(w, err)
-	} else {
-		result := struct {
-			Volume int `json:"volume"`
-		}{vol}
-		writeJsonResult(w, &result)
-	}
-}
-
-func handleVolumePut(w http.ResponseWriter, r *http.Request) {
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		writeJsonError(w, err)
-		return
-	}
-
-	req := struct {
-		Volume int
-	}{-1}
-	err = json.Unmarshal(body, &req)
-	if err != nil {
-		writeJsonError(w, err)
-		return
-	}
-
-	if req.Volume >= 0 {
-		volume.SetVolume(req.Volume)
-	}
-
-	res := struct{}{}
-	writeJsonResult(w, res)
-}
-
 func handleIndex(w http.ResponseWriter, r *http.Request) {
+	if !checkSession(w, r) {
+		return
+	}
+
 	vol := 0
 	if vol2, err := volume.GetVolume(); err != nil {
 		writeJsonError(w, err)
@@ -189,8 +77,9 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 func main() {
 	// Server flags
 	port := flag.Int("port", 9696, "The port to listen on.")
-	templateDir := flag.String("templates", "./templates", "The directory to search for template files.")
-	staticDir := flag.String("static", "./static", "The directory to search for static files.")
+	config := flag.String("config", "./config.json", "Database config file.")
+
+	templateFlags()
 
 	// Hue flags
 	ip := flag.String("ip", "192.168.1.3", "IP Address of Philips Hue hub.")
@@ -198,64 +87,19 @@ func main() {
 	deviceType := flag.String("device_type", "HueGoRaspberryPi", "Device type for Hue hub.")
 
 	flag.Parse()
+	loadConfig(*config)
 
 	r := mux.NewRouter()
 
-	log.Println("Loading templates:")
-	templates = template.New("templates")
-	err := filepath.Walk(*templateDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if info.IsDir() {
-			return nil
-		}
-		rel, err := filepath.Rel(*templateDir, path)
-		if err != nil {
-			return err
-		}
-
-		t := template.Must(template.ParseFiles(path))
-		log.Printf("  %v\n", rel)
-		templates = template.Must(templates.AddParseTree(rel, t.Tree))
-		return nil
-	})
-	if err != nil {
-		log.Fatal("Unable to load templates.")
-	}
-
-	log.Println("Loading static files:")
-	err = filepath.Walk(*staticDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if info.IsDir() {
-			return nil
-		}
-		rel, err := filepath.Rel(*staticDir, path)
-		if err != nil {
-			return err
-		}
-		log.Printf("  %v\n", rel)
-
-		r.HandleFunc("/"+rel, func(w http.ResponseWriter, r *http.Request) {
-			b, err := ioutil.ReadFile(path)
-			if err != nil {
-				writeJsonError(w, err)
-				return
-			}
-			w.Write(b)
-		}).Methods("GET")
-
-		return nil
-	})
-	if err != nil {
+	if err := loadTemplates(r); err != nil {
 		log.Fatal("Unable to load static file.")
 	}
 
 	philipsHue = &hue.Hue{*ip, *userName, *deviceType}
 
 	r.HandleFunc("/", handleIndex).Methods("GET")
+	r.HandleFunc("/session", handleSessionPost).Methods("POST")
+	r.HandleFunc("/session", handleSessionDelete).Methods("DELETE")
 	r.HandleFunc("/volume", handleVolumeGet).Methods("GET")
 	r.HandleFunc("/volume", handleVolumePut).Methods("PUT")
 	r.HandleFunc("/light", handleLightsGet).Methods("GET")
