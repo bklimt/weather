@@ -87,7 +87,7 @@ func (token StreamToken) redeem() bool {
 	if len(rows) == 0 {
 		log.Println("Stream token not found.")
 		// return token.isRecent()
-    return false
+		return false
 	}
 
 	stmt, err = db.Prepare("update stream_token set deleted = ? where token = ? and deleted is null")
