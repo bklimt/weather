@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"github.com/bklimt/weather"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -15,6 +16,7 @@ func handleSessionPost(w http.ResponseWriter, r *http.Request) {
 		Username string
 		Password string
 	}{"", ""}
+
 	if r.Header.Get("Content-Type") == "application/json" {
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
@@ -32,23 +34,23 @@ func handleSessionPost(w http.ResponseWriter, r *http.Request) {
 		req.Password = r.PostFormValue("password")
 	}
 
-	session, expires, err := createSession(req.Username, req.Password)
+	session, err := weather.CreateSession(req.Username, req.Password)
 	if err != nil {
 		writeJsonError(w, err)
 		return
 	}
 
-	if session == "" {
+	if session == nil {
 		http.Redirect(w, r, "/login?failed=true", http.StatusSeeOther)
 		return
 	}
 
 	http.SetCookie(w, &http.Cookie{
 		sessionCookieName, // Name
-		session,           // Value
+		session.Token,     // Value
 		"",                // Path
 		"",                // Domain
-		expires,           // Expires
+		session.Expires,   // Expires
 		"",                // RawExpires
 		0,                 // MaxAge
 		false,             // true, // Secure
@@ -62,7 +64,7 @@ func handleSessionPost(w http.ResponseWriter, r *http.Request) {
 
 func handleSessionDelete(w http.ResponseWriter, r *http.Request) {
 	if sessionCookie, err := r.Cookie(sessionCookieName); err == nil {
-		if err = deleteSession(sessionCookie.Value); err != nil {
+		if err = weather.DeleteSession(sessionCookie.Value); err != nil {
 			log.Printf("Unable to delete session: %v\n", err)
 		}
 
@@ -92,10 +94,10 @@ func checkSession(w http.ResponseWriter, r *http.Request) bool {
 			log.Printf("Error reading cookie: %v\n", err)
 		}
 	} else {
-		if valid, err := validSession(sessionCookie.Value); err != nil {
+		if user, err := weather.GetSession(sessionCookie.Value); err != nil {
 			log.Printf("Error validating cookie: %v\n", err)
 		} else {
-			if valid {
+			if user != nil {
 				return true
 			}
 		}
