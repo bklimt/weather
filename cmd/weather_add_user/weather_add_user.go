@@ -3,13 +3,10 @@ package main
 
 import (
 	"bufio"
-	"code.google.com/p/go.crypto/bcrypt"
-	"crypto/rand"
 	"flag"
 	"fmt"
+  "github.com/bklimt/weather"
 	"github.com/gcmurphy/getpass"
-	"github.com/ziutek/mymysql/mysql"
-	_ "github.com/ziutek/mymysql/native"
 	"os"
 	"strings"
 )
@@ -33,26 +30,10 @@ func prompt(p string, hide bool, confirm bool) (string, error) {
 }
 
 func main() {
-	dbname := flag.String("db", "weather", "Name of the database to connect to.")
+  config := flag.String("config", "./config.json", "File to load the database config from.")
 	flag.Parse()
 
-	user, err := prompt("Database username: ", false, false)
-	if err != nil {
-		fmt.Printf("%v\n", err)
-		return
-	}
-
-	pass, err := prompt("Database password: ", true, false)
-	if err != nil {
-		fmt.Printf("%v\n", err)
-		return
-	}
-
-	db := mysql.New("tcp", "", "127.0.0.1:3306", user, pass, *dbname)
-	if err := db.Connect(); err != nil {
-		fmt.Printf("%v\n", err)
-		return
-	}
+  weather.LoadConfig(*config)
 
 	username, err := prompt("Username: ", false, false)
 	if err != nil {
@@ -66,32 +47,10 @@ func main() {
 		return
 	}
 
-	salt := make([]byte, 20)
-	// There's no need to seed with rand.Read.
-	_, err = rand.Read(salt)
-	if err != nil {
-		fmt.Printf("Unable to generate salt: %v\n", err)
-		return
-	}
-	// fmt.Printf("salt: %v\n", salt)
-
-	b := append(salt, password...)
-	bcpw, err := bcrypt.GenerateFromPassword(b, 0)
-	if err != nil {
-		fmt.Printf("Unable to bcrypt password: %v\n", err)
-		return
-	}
-
-	stmt, err := db.Prepare("INSERT INTO user (name, salt, bcrypt) values (?, ?, ?)")
-	if err != nil {
-		fmt.Printf("Unable to prepare statement: %v\n", err)
-		return
-	}
-
-	stmt.Bind(username, salt, bcpw)
-	_, err = stmt.Run()
-	if err != nil {
-		fmt.Printf("Unable to insert row into database: %v\n", err)
-		return
-	}
+  user := weather.User{username}
+  err = user.Save(password)
+  if err != nil {
+    fmt.Printf("Unable to save user: %v\n", err)
+    return
+  }
 }

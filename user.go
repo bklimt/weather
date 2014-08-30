@@ -2,6 +2,7 @@ package weather
 
 import (
 	"code.google.com/p/go.crypto/bcrypt"
+	"crypto/rand"
 	"errors"
 	"log"
 )
@@ -46,3 +47,39 @@ func getUser(username, password string) (*User, error) {
 
 	return &User{username}, nil
 }
+
+// Saves all of the information for this user to the database.
+// This function does not check that the password is correct or any permissions.
+// If a user with that name already exists, this function fails.
+func (user User) Save(password string) error {
+	salt := make([]byte, 20)
+	_, err := rand.Read(salt)
+	if err != nil {
+		log.Printf("Unable to generate salt: %v\n", err)
+		return err
+	}
+	// log.Printf("salt: %v\n", salt)
+
+	b := append(salt, password...)
+	bcpw, err := bcrypt.GenerateFromPassword(b, 0)
+	if err != nil {
+		log.Printf("Unable to bcrypt password: %v\n", err)
+		return err
+	}
+
+	stmt, err := db.Prepare("INSERT INTO user (name, salt, bcrypt) values (?, ?, ?)")
+	if err != nil {
+		log.Printf("Unable to prepare statement: %v\n", err)
+		return err
+	}
+
+	stmt.Bind(user.Name, salt, bcpw)
+	_, err = stmt.Run()
+	if err != nil {
+		log.Printf("Unable to insert row into database: %v\n", err)
+		return err
+	}
+
+  return nil
+}
+
