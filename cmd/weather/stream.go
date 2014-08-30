@@ -2,9 +2,11 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/bklimt/weather"
 	"log"
 	"net/http"
+	"net/url"
 )
 
 func handleCheckStreamPost(w http.ResponseWriter, r *http.Request) {
@@ -26,7 +28,7 @@ func handleCheckStreamPost(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Received request to auth stream: %v\n", string(j))
 	}
 
-	if weather.CheckStream(req) {
+	if req.Check() {
 		log.Println("Allowing stream request.")
 		w.Header().Set("icecast-auth-user", "1")
 		w.WriteHeader(http.StatusOK)
@@ -36,5 +38,33 @@ func handleCheckStreamPost(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("icecast-auth-message", "not authorized")
 		w.WriteHeader(http.StatusForbidden)
 		w.Write([]byte("No"))
+	}
+}
+
+type streamGetHandler struct {
+	streamUrl *url.URL
+}
+
+func (h *streamGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	session, ok := checkSession(w, r)
+	if !ok {
+		return
+	}
+
+	token, err := weather.NewStreamToken(session)
+	if err != nil {
+		writeJsonError(w, err)
+		return
+	}
+
+	url := fmt.Sprintf("%v?token=%v", h.streamUrl, token)
+
+	values := struct {
+		StreamUrl string
+	}{url}
+
+	if err := templates.ExecuteTemplate(w, "stream.html", values); err != nil {
+		writeJsonError(w, err)
+		return
 	}
 }

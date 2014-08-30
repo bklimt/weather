@@ -7,7 +7,7 @@ import (
 )
 
 func handleIndex(w http.ResponseWriter, r *http.Request) {
-	if !checkSession(w, r) {
+	if _, ok := checkSession(w, r); !ok {
 		return
 	}
 

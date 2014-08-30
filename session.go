@@ -6,9 +6,12 @@ import (
 	"time"
 )
 
+type SessionToken string
+
 type Session struct {
-	Token   string
+	Token   SessionToken
 	Expires time.Time
+	User    *User
 }
 
 func uuid() string {
@@ -19,9 +22,9 @@ func uuid() string {
 	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
 }
 
-func CreateSession(username, password string) (*Session, error) {
-	u, err := getUser(username, password)
-	if u == nil {
+func NewSession(username, password string) (*Session, error) {
+	user, err := getUser(username, password)
+	if user == nil {
 		return nil, err
 	}
 
@@ -30,7 +33,7 @@ func CreateSession(username, password string) (*Session, error) {
 		return nil, err
 	}
 
-	token := uuid()
+	token := SessionToken(uuid())
 	expires := time.Now().AddDate(0, 1, 0)
 
 	stmt.Bind(token, username, expires)
@@ -39,10 +42,10 @@ func CreateSession(username, password string) (*Session, error) {
 		return nil, err
 	}
 
-	return &Session{token, expires}, nil
+	return &Session{token, expires, user}, nil
 }
 
-func DeleteSession(session string) error {
+func (session SessionToken) Delete() error {
 	stmt, err := db.Prepare("update session set deleted=? where token=?")
 	if err != nil {
 		return err
@@ -57,13 +60,13 @@ func DeleteSession(session string) error {
 	return nil
 }
 
-func GetSession(session string) (*user, error) {
-	stmt, err := db.Prepare("select username from session where token = ? and expires > ? and deleted is null")
+func (token SessionToken) GetSession() (*Session, error) {
+	stmt, err := db.Prepare("select username, expires from session where token = ? and expires > ? and deleted is null")
 	if err != nil {
 		return nil, err
 	}
 
-	stmt.Bind(session, time.Now())
+	stmt.Bind(token, time.Now())
 	rows, res, err := stmt.Exec()
 	if err != nil {
 		return nil, err
@@ -74,6 +77,10 @@ func GetSession(session string) (*user, error) {
 	}
 
 	name := rows[0].Str(res.Map("username"))
+	user := &User{name}
 
-	return &user{name}, nil
+	expires := rows[0].Localtime(res.Map("expires"))
+	session := &Session{token, expires, user}
+
+	return session, nil
 }

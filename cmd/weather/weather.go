@@ -8,12 +8,15 @@ import (
 	"github.com/gorilla/mux"
 	"log"
 	"net/http"
+	"net/url"
 )
 
 func main() {
 	// Server flags
 	port := flag.Int("port", 9696, "The port to listen on.")
 	config := flag.String("config", "./config.json", "Database config file.")
+	streamUrl := flag.String("audio_stream_url", "http://example.com:8000/stream.ogg", "Audio stream URL.")
+
 	templateFlags()
 	hue.Flags()
 	flag.Parse()
@@ -28,6 +31,12 @@ func main() {
 
 	philipsHue = hue.FromFlags()
 
+	u, err := url.Parse(*streamUrl)
+	if err != nil {
+		log.Fatal("Unable to parse stream url: %v", streamUrl)
+	}
+	streamHandler := streamGetHandler{u}
+
 	r.HandleFunc("/", handleIndex).Methods("GET")
 	r.HandleFunc("/session", handleSessionPost).Methods("POST")
 	r.HandleFunc("/session", handleSessionDelete).Methods("DELETE")
@@ -36,6 +45,7 @@ func main() {
 	r.HandleFunc("/light", handleLightsGet).Methods("GET")
 	r.HandleFunc("/light/{id}", handleLightPut).Methods("PUT")
 	r.HandleFunc("/check_stream", handleCheckStreamPost).Methods("POST")
+	r.Handle("/stream", &streamHandler).Methods("GET")
 
 	http.Handle("/", r)
 

@@ -34,7 +34,7 @@ func handleSessionPost(w http.ResponseWriter, r *http.Request) {
 		req.Password = r.PostFormValue("password")
 	}
 
-	session, err := weather.CreateSession(req.Username, req.Password)
+	session, err := weather.NewSession(req.Username, req.Password)
 	if err != nil {
 		writeJsonError(w, err)
 		return
@@ -46,17 +46,17 @@ func handleSessionPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.SetCookie(w, &http.Cookie{
-		sessionCookieName, // Name
-		session.Token,     // Value
-		"",                // Path
-		"",                // Domain
-		session.Expires,   // Expires
-		"",                // RawExpires
-		0,                 // MaxAge
-		false,             // true, // Secure
-		false,             // HttpOnly
-		"",                // Raw
-		nil,               // Unparsed
+		sessionCookieName,     // Name
+		string(session.Token), // Value
+		"",              // Path
+		"",              // Domain
+		session.Expires, // Expires
+		"",              // RawExpires
+		0,               // MaxAge
+		false,           // true, // Secure
+		false,           // HttpOnly
+		"",              // Raw
+		nil,             // Unparsed
 	})
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
@@ -64,7 +64,8 @@ func handleSessionPost(w http.ResponseWriter, r *http.Request) {
 
 func handleSessionDelete(w http.ResponseWriter, r *http.Request) {
 	if sessionCookie, err := r.Cookie(sessionCookieName); err == nil {
-		if err = weather.DeleteSession(sessionCookie.Value); err != nil {
+		token := weather.SessionToken(sessionCookie.Value)
+		if err = token.Delete(); err != nil {
 			log.Printf("Unable to delete session: %v\n", err)
 		}
 
@@ -88,21 +89,22 @@ func handleSessionDelete(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/login.html", http.StatusSeeOther)
 }
 
-func checkSession(w http.ResponseWriter, r *http.Request) bool {
+func checkSession(w http.ResponseWriter, r *http.Request) (weather.SessionToken, bool) {
 	if sessionCookie, err := r.Cookie(sessionCookieName); err != nil {
 		if err != http.ErrNoCookie {
 			log.Printf("Error reading cookie: %v\n", err)
 		}
 	} else {
-		if user, err := weather.GetSession(sessionCookie.Value); err != nil {
+		token := weather.SessionToken(sessionCookie.Value)
+		if user, err := token.GetSession(); err != nil {
 			log.Printf("Error validating cookie: %v\n", err)
 		} else {
 			if user != nil {
-				return true
+				return token, true
 			}
 		}
 	}
 
 	http.Redirect(w, r, "/login.html", http.StatusSeeOther)
-	return false
+	return weather.SessionToken(""), false
 }

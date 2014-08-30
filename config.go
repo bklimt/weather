@@ -10,7 +10,7 @@ import (
 
 var db mysql.Conn
 
-type config struct {
+var config struct {
 	Database string
 	Username string
 	Password string
@@ -22,16 +22,14 @@ func LoadConfig(path string) {
 		log.Fatal("Unable to open config: ", err)
 	}
 
-	info := config{}
-
-	if err = json.Unmarshal(b, &info); err != nil {
+	if err = json.Unmarshal(b, &config); err != nil {
 		log.Fatal("Unable to parse config: ", err)
 	}
 
-	db = mysql.New("tcp", "", "127.0.0.1:3306", info.Username, info.Password, info.Database)
+	db = mysql.New("tcp", "", "127.0.0.1:3306", config.Username, config.Password, config.Database)
 	if err := db.Connect(); err != nil {
 		log.Fatal("Unable to open database: ", err)
 	}
 
-	log.Printf("Opened database %s", info.Database)
+	log.Printf("Opened database %s", config.Database)
 }

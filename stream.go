@@ -7,41 +7,43 @@ import (
 	"time"
 )
 
-func createStreamToken(session string) (string, error) {
-	u, err := GetSession(session)
+type StreamToken string
+
+func NewStreamToken(sessionToken SessionToken) (StreamToken, error) {
+	session, err := sessionToken.GetSession()
 	if err != nil {
-		return "", err
+		return StreamToken(""), err
 	}
 
-	if u == nil {
-		return "", errors.New("Not authorized.")
+	if session == nil {
+		return StreamToken(""), errors.New("Not authorized.")
 	}
 
 	stmt, err := db.Prepare("insert into stream_token (token, username, created) values (?, ?, ?)")
 	if err != nil {
-		return "", err
+		return StreamToken(""), err
 	}
 
-	token := uuid()
+	streamToken := StreamToken(uuid())
 	created := time.Now()
-	stmt.Bind(token, u.Name, created)
+	stmt.Bind(streamToken, session.User.Name, created)
 	_, err = stmt.Run()
 	if err != nil {
-		return "", err
+		return StreamToken(""), err
 	}
 
-	return token, nil
+	return streamToken, nil
 }
 
-func isRecentStreamToken(token string) bool {
+func (token StreamToken) isRecent() bool {
 	stmt, err := db.Prepare("select * from stream_token where token = ? and deleted > ?")
 	if err != nil {
 		log.Printf("Error creating recent stream token query: %v\n", err)
 		return false
 	}
 
-	twoMinutesAgo := time.Now().Add(-2 * time.Minute)
-	stmt.Bind(token, twoMinutesAgo)
+	thirtySeconsAgo := time.Now().Add(-30 * time.Second)
+	stmt.Bind(token, thirtySeconsAgo)
 	rows, _, err := stmt.Exec()
 	if err != nil {
 		log.Printf("Error looking up recent stream token: %v\n", err)
@@ -57,7 +59,7 @@ func isRecentStreamToken(token string) bool {
 	return true
 }
 
-func redeemStreamToken(token string) bool {
+func (token StreamToken) redeem() bool {
 	stmt, err := db.Prepare("select * from stream_token where token = ? and deleted is null")
 	if err != nil {
 		log.Printf("Error creating stream token query: %v\n", err)
@@ -73,7 +75,7 @@ func redeemStreamToken(token string) bool {
 
 	if len(rows) == 0 {
 		log.Println("Stream token not found.")
-		return isRecentStreamToken(token)
+		return token.isRecent()
 	}
 
 	stmt, err = db.Prepare("update stream_token set deleted = ? where token = ? and deleted is null")
@@ -104,7 +106,7 @@ type StreamRequest struct {
 	Agent  string
 }
 
-func CheckStream(req StreamRequest) bool {
+func (req *StreamRequest) Check() bool {
 	if req.Action != "listener_add" {
 		return false
 	}
@@ -122,7 +124,8 @@ func CheckStream(req StreamRequest) bool {
 		return false
 	}
 
-	if !redeemStreamToken(tokens[0]) {
+	token := StreamToken(tokens[0])
+	if !token.redeem() {
 		return false
 	}
 

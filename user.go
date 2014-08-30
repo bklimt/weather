@@ -6,11 +6,11 @@ import (
 	"log"
 )
 
-type user struct {
+type User struct {
 	Name string
 }
 
-func getUser(username, password string) (*user, error) {
+func getUser(username, password string) (*User, error) {
 	q, err := db.Prepare("select salt, bcrypt from user where name=?")
 	if err != nil {
 		return nil, err
@@ -43,5 +43,5 @@ func getUser(username, password string) (*user, error) {
 		return nil, nil
 	}
 
-	return &user{username}, nil
+	return &User{username}, nil
 }
