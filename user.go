@@ -6,6 +6,7 @@ import (
 	"log"
 )
 
+// Information about a user who can log into this website.
 type User struct {
 	Name string
 }

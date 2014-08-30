@@ -7,8 +7,14 @@ import (
 	"time"
 )
 
+// A one-time-use token for getting access to an audio stream.
+// This server trades a session token in for a stream token and then gives the stream token back to
+// the client. The stream token can then be given to a separate streaming server. The streaming
+// server checks with this server to make sure the stream token is valid. If it is, the token is
+// invalidated so that it can't be used again.
 type StreamToken string
 
+// Creates a new StreamToken in the server's database for the given session.
 func NewStreamToken(sessionToken SessionToken) (StreamToken, error) {
 	session, err := sessionToken.GetSession()
 	if err != nil {
@@ -35,6 +41,10 @@ func NewStreamToken(sessionToken SessionToken) (StreamToken, error) {
 	return streamToken, nil
 }
 
+// Returns true if the token has been used in the last 30 seconds.
+// This function isn't currently used but could be to allow a window of use for a token.
+// This can be useful for example when navigating directly to a stream in Chrome, because
+// Chrome actually makes two requests for the content.
 func (token StreamToken) isRecent() bool {
 	stmt, err := db.Prepare("select * from stream_token where token = ? and deleted > ?")
 	if err != nil {
@@ -42,8 +52,8 @@ func (token StreamToken) isRecent() bool {
 		return false
 	}
 
-	thirtySeconsAgo := time.Now().Add(-30 * time.Second)
-	stmt.Bind(token, thirtySeconsAgo)
+	thirtySecondsAgo := time.Now().Add(-30 * time.Second)
+	stmt.Bind(token, thirtySecondsAgo)
 	rows, _, err := stmt.Exec()
 	if err != nil {
 		log.Printf("Error looking up recent stream token: %v\n", err)
@@ -59,6 +69,7 @@ func (token StreamToken) isRecent() bool {
 	return true
 }
 
+// Returns true if this stream token is still good, and deletes it.
 func (token StreamToken) redeem() bool {
 	stmt, err := db.Prepare("select * from stream_token where token = ? and deleted is null")
 	if err != nil {
@@ -75,7 +86,8 @@ func (token StreamToken) redeem() bool {
 
 	if len(rows) == 0 {
 		log.Println("Stream token not found.")
-		return token.isRecent()
+		// return token.isRecent()
+    return false
 	}
 
 	stmt, err = db.Prepare("update stream_token set deleted = ? where token = ? and deleted is null")
@@ -94,6 +106,8 @@ func (token StreamToken) redeem() bool {
 	return true
 }
 
+// The information in a request from a separate streaming server, such as IceCast2, used for asking
+// this server whether access to a particular stream should be allowed.
 type StreamRequest struct {
 	Action string
 	Server string
@@ -106,6 +120,7 @@ type StreamRequest struct {
 	Agent  string
 }
 
+// Returns whether the given request from a separate streaming server should be allowed.
 func (req *StreamRequest) Check() bool {
 	if req.Action != "listener_add" {
 		return false

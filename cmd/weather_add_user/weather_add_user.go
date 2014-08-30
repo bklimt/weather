@@ -1,3 +1,4 @@
+// The weather_add_user command lets you add a new user who can log into the weather website.
 package main
 
 import (

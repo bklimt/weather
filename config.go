@@ -16,6 +16,8 @@ var config struct {
 	Password string
 }
 
+// Reads in the database config for the server and connects to the database.
+// Kills the server if unsuccessful.
 func LoadConfig(path string) {
 	b, err := ioutil.ReadFile(path)
 	if err != nil {

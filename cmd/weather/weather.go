@@ -1,3 +1,7 @@
+// The weather command is an http server that provides a mobile website that can be used to control
+// various home automation systems. It is designed to run on Raspberry Pi and provides controls for
+// setting the volume of sound output, controlling Philips Hue light bulbs, and streaming audio
+// from a microphone attached to the Pi.
 package main
 
 import (
