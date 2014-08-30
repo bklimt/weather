@@ -1,9 +1,10 @@
 weather
 =======
 
-A webserver that runs on a Raspberry Pi and lets you control:
-* Philips Hue lights
-* the volume of the headphone jack
+A webserver that runs on a Raspberry Pi and lets you:
+* control Philips Hue lights
+* control the volume of the headphone jack
+* connect to a streaming audio source securely
 
 # Setup
 
@@ -15,11 +16,15 @@ You'll need to make sure your Hue is configured correctly. Build the `hue` comma
 
 Then press the link button on your Hue router and use the command-line tool to register the app.
 
-    $GOPATH/bin/hue --ip="YOUR.ROUTER.IP.ADDRESS" --register
+    $GOPATH/bin/hue --hue_ip="YOUR.ROUTER.IP.ADDRESS" --register
+
+You'll also need to set up mysql.
+
+    // instructions coming soon
 
 Once that it complete, you can start the `weather` server:
 
-    $GOPATH/bin/humid --ip="YOUR.ROUTER.IP.ADDRESS"
+    $GOPATH/bin/humid --hue_ip="YOUR.ROUTER.IP.ADDRESS"
 
 While `weather` is running, you can access it using the IP address of the Raspberry Pi.
 
