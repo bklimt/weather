@@ -5,7 +5,7 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-  "github.com/bklimt/weather"
+	"github.com/bklimt/weather"
 	"github.com/gcmurphy/getpass"
 	"os"
 	"strings"
@@ -30,10 +30,10 @@ func prompt(p string, hide bool, confirm bool) (string, error) {
 }
 
 func main() {
-  config := flag.String("config", "./config.json", "File to load the database config from.")
+	config := flag.String("config", "./config.json", "File to load the database config from.")
 	flag.Parse()
 
-  weather.LoadConfig(*config)
+	weather.LoadConfig(*config)
 
 	username, err := prompt("Username: ", false, false)
 	if err != nil {
@@ -47,10 +47,10 @@ func main() {
 		return
 	}
 
-  user := weather.User{username}
-  err = user.Save(password)
-  if err != nil {
-    fmt.Printf("Unable to save user: %v\n", err)
-    return
-  }
+	user := weather.User{username}
+	err = user.Save(password)
+	if err != nil {
+		fmt.Printf("Unable to save user: %v\n", err)
+		return
+	}
 }

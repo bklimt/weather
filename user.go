@@ -80,6 +80,5 @@ func (user User) Save(password string) error {
 		return err
 	}
 
-  return nil
+	return nil
 }
-
