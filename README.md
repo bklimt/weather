@@ -1,10 +1,12 @@
 weather
 =======
 
-A webserver that runs on a Raspberry Pi and lets you:
+A web server that runs on a Raspberry Pi and lets you:
 * control Philips Hue lights
 * control the volume of the headphone jack
 * connect to a streaming audio source securely
+
+[API Reference](https://godoc.org/github.com/bklimt/weather)
 
 # Setup
 
