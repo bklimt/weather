@@ -34,20 +34,20 @@ func main() {
 		log.Fatal("Unable to load static file.")
 	}
 
-	philipsHue = hue.FromFlags()
+	h := hue.FromFlags()
 
 	u, err := url.Parse(*streamUrl)
 	if err != nil {
 		log.Fatal("Unable to parse stream url: %v", streamUrl)
 	}
 
-	r.HandleFunc("/", handleIndex).Methods("GET")
+	r.Handle("/", &indexHandler{*card, h}).Methods("GET")
 	r.HandleFunc("/session", handleSessionPost).Methods("POST")
 	r.HandleFunc("/session", handleSessionDelete).Methods("DELETE")
-	r.HandleFunc("/volume", &volumeGetHandler{*card}).Methods("GET")
-	r.HandleFunc("/volume", &volumePutHandler{*card}).Methods("PUT")
-	r.HandleFunc("/light", &lightsGetHandler{philipsHue}).Methods("GET")
-	r.HandleFunc("/light/{id}", &lightPutHandler{philipsHue}).Methods("PUT")
+	r.Handle("/volume", &volumeGetHandler{*card}).Methods("GET")
+	r.Handle("/volume", &volumePutHandler{*card}).Methods("PUT")
+	r.Handle("/light", &lightsGetHandler{h}).Methods("GET")
+	r.Handle("/light/{id}", &lightPutHandler{h}).Methods("PUT")
 	r.HandleFunc("/check_stream", handleCheckStreamPost).Methods("POST")
 	r.Handle("/stream", &streamGetHandler{u}).Methods("GET")
 

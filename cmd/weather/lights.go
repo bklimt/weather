@@ -23,7 +23,7 @@ type lightsGetHandler struct {
 
 func (h *lightsGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	lights := &hue.GetLightsResponse{}
-	if err := h.hue.GetLights(lights); err != nil {
+	if err := h.Hue.GetLights(lights); err != nil {
 		writeJsonError(w, err)
 		return
 	}

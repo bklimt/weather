@@ -6,13 +6,18 @@ import (
 	"net/http"
 )
 
-func handleIndex(w http.ResponseWriter, r *http.Request) {
+type indexHandler struct {
+	Card string
+	Hue  *hue.Hue
+}
+
+func (h *indexHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if _, ok := checkSession(w, r); !ok {
 		return
 	}
 
 	vol := 0
-	if vol2, err := volume.GetVolume(); err != nil {
+	if vol2, err := volume.GetVolume(h.Card); err != nil {
 		writeJsonError(w, err)
 		return
 	} else {
@@ -20,7 +25,7 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 	}
 
 	lightNames := &hue.GetLightsResponse{}
-	if err := philipsHue.GetLights(lightNames); err != nil {
+	if err := h.Hue.GetLights(lightNames); err != nil {
 		writeJsonError(w, err)
 		return
 	}
@@ -28,7 +33,7 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 	lights := make(map[string]hue.GetLightResponse)
 	for id, _ := range *lightNames {
 		l := &hue.GetLightResponse{}
-		if err := philipsHue.GetLight(id, l); err != nil {
+		if err := h.Hue.GetLight(id, l); err != nil {
 			writeJsonError(w, err)
 			return
 		}
