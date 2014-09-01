@@ -7,8 +7,12 @@ import (
 	"net/http"
 )
 
-func handleVolumeGet(w http.ResponseWriter, r *http.Request) {
-	if vol, err := volume.GetVolume(); err != nil {
+type volumeGetHandler struct {
+	Card string
+}
+
+func (h *volumeGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if vol, err := volume.GetVolume(h.Card); err != nil {
 		writeJsonError(w, err)
 	} else {
 		result := struct {
@@ -18,7 +22,11 @@ func handleVolumeGet(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func handleVolumePut(w http.ResponseWriter, r *http.Request) {
+type volumePutHandler struct {
+	Card string
+}
+
+func (h *volumePutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		writeJsonError(w, err)
@@ -35,7 +43,7 @@ func handleVolumePut(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.Volume >= 0 {
-		volume.SetVolume(req.Volume)
+		volume.SetVolume(h.Card, req.Volume)
 	}
 
 	res := struct{}{}

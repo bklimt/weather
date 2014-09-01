@@ -8,8 +8,6 @@ import (
 	"net/http"
 )
 
-var philipsHue *hue.Hue
-
 type light struct {
 	Id   string `json:"id"`
 	Name string `json:"name"`
@@ -19,9 +17,13 @@ type light struct {
 	Bri  int    `json:"bri"`
 }
 
-func handleLightsGet(w http.ResponseWriter, r *http.Request) {
+type lightsGetHandler struct {
+	Hue *hue.Hue
+}
+
+func (h *lightsGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	lights := &hue.GetLightsResponse{}
-	if err := philipsHue.GetLights(lights); err != nil {
+	if err := h.hue.GetLights(lights); err != nil {
 		writeJsonError(w, err)
 		return
 	}
@@ -29,7 +31,7 @@ func handleLightsGet(w http.ResponseWriter, r *http.Request) {
 	var result []light
 	for id, _ := range *lights {
 		l := &hue.GetLightResponse{}
-		if err := philipsHue.GetLight(id, l); err != nil {
+		if err := h.Hue.GetLight(id, l); err != nil {
 			writeJsonError(w, err)
 			return
 		}
@@ -40,7 +42,11 @@ func handleLightsGet(w http.ResponseWriter, r *http.Request) {
 	writeJsonResult(w, &result)
 }
 
-func handleLightPut(w http.ResponseWriter, r *http.Request) {
+type lightPutHandler struct {
+	Hue *hue.Hue
+}
+
+func (h *lightPutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		writeJsonError(w, err)
@@ -75,7 +81,7 @@ func handleLightPut(w http.ResponseWriter, r *http.Request) {
 	if req.On != nil {
 		l.On = req.On
 	}
-	if err := philipsHue.PutLight(id, l); err != nil {
+	if err := h.Hue.PutLight(id, l); err != nil {
 		writeJsonError(w, err)
 		return
 	}

@@ -20,6 +20,7 @@ func main() {
 	port := flag.Int("port", 9696, "The port to listen on.")
 	config := flag.String("config", "./config.json", "Database config file.")
 	streamUrl := flag.String("audio_stream_url", "http://example.com:8000/stream.ogg", "Audio stream URL.")
+	card := flag.String("audio_card", "default", "The audio card to change the volume of.")
 
 	templateFlags()
 	hue.Flags()
@@ -39,17 +40,16 @@ func main() {
 	if err != nil {
 		log.Fatal("Unable to parse stream url: %v", streamUrl)
 	}
-	streamHandler := streamGetHandler{u}
 
 	r.HandleFunc("/", handleIndex).Methods("GET")
 	r.HandleFunc("/session", handleSessionPost).Methods("POST")
 	r.HandleFunc("/session", handleSessionDelete).Methods("DELETE")
-	r.HandleFunc("/volume", handleVolumeGet).Methods("GET")
-	r.HandleFunc("/volume", handleVolumePut).Methods("PUT")
-	r.HandleFunc("/light", handleLightsGet).Methods("GET")
-	r.HandleFunc("/light/{id}", handleLightPut).Methods("PUT")
+	r.HandleFunc("/volume", &volumeGetHandler{*card}).Methods("GET")
+	r.HandleFunc("/volume", &volumePutHandler{*card}).Methods("PUT")
+	r.HandleFunc("/light", &lightsGetHandler{philipsHue}).Methods("GET")
+	r.HandleFunc("/light/{id}", &lightPutHandler{philipsHue}).Methods("PUT")
 	r.HandleFunc("/check_stream", handleCheckStreamPost).Methods("POST")
-	r.Handle("/stream", &streamHandler).Methods("GET")
+	r.Handle("/stream", &streamGetHandler{u}).Methods("GET")
 
 	http.Handle("/", r)
 
