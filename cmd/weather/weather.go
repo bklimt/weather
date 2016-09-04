@@ -17,6 +17,7 @@ import (
 
 func main() {
 	// Server flags
+	host := flag.String("host", "127.0.0.1", "Hostname to listen on.")
 	port := flag.Int("port", 9696, "The port to listen on.")
 	config := flag.String("config", "./config.json", "Database config file.")
 	streamUrl := flag.String("audio_stream_url", "http://example.com:8000/stream.ogg", "Audio stream URL.")
@@ -62,6 +63,7 @@ func main() {
 
 	http.Handle("/", r)
 
-	log.Printf("Serving on port %d...", *port)
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", *port), nil))
+	address := fmt.Sprintf("%s:%d", *host, *port)
+	log.Printf("Serving on %s...", address)
+	log.Fatal(http.ListenAndServe(address, nil))
 }
