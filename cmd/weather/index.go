@@ -7,8 +7,9 @@ import (
 )
 
 type indexHandler struct {
-	Card string
-	Hue  *hue.Hue
+	Card   string
+	Hue    *hue.Hue
+	Volume bool
 }
 
 func (h *indexHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -16,34 +17,41 @@ func (h *indexHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	vol := 0
-	if vol2, err := volume.GetVolume(h.Card); err != nil {
-		writeJsonError(w, err)
-		return
-	} else {
-		vol = vol2
+	values := struct {
+		ShowVolume bool
+		Volume     int
+		Lights     map[string]hue.GetLightResponse
+	}{false, 0, map[string]hue.GetLightResponse{}}
+
+	if h.Volume {
+		if vol, err := volume.GetVolume(h.Card); err != nil {
+			writeJsonError(w, err)
+			return
+		} else {
+			values.ShowVolume = true
+			values.Volume = vol
+		}
 	}
 
-	lightNames := &hue.GetLightsResponse{}
-	if err := h.Hue.GetLights(lightNames); err != nil {
-		writeJsonError(w, err)
-		return
-	}
-
-	lights := make(map[string]hue.GetLightResponse)
-	for id, _ := range *lightNames {
-		l := &hue.GetLightResponse{}
-		if err := h.Hue.GetLight(id, l); err != nil {
+	if h.Hue != nil {
+		lightNames := &hue.GetLightsResponse{}
+		if err := h.Hue.GetLights(lightNames); err != nil {
 			writeJsonError(w, err)
 			return
 		}
-		lights[id] = *l
-	}
 
-	values := struct {
-		Volume int
-		Lights map[string]hue.GetLightResponse
-	}{vol, lights}
+		lights := make(map[string]hue.GetLightResponse)
+		for id, _ := range *lightNames {
+			l := &hue.GetLightResponse{}
+			if err := h.Hue.GetLight(id, l); err != nil {
+				writeJsonError(w, err)
+				return
+			}
+			lights[id] = *l
+		}
+
+		values.Lights = lights
+	}
 
 	if err := templates.ExecuteTemplate(w, "index.html", values); err != nil {
 		writeJsonError(w, err)

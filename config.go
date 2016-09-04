@@ -28,6 +28,10 @@ func LoadConfig(path string) {
 		log.Fatal("Unable to parse config: ", err)
 	}
 
+	LoadDb()
+}
+
+func LoadDb() {
 	db = mysql.New("tcp", "", "127.0.0.1:3306", config.Username, config.Password, config.Database)
 	if err := db.Connect(); err != nil {
 		log.Fatal("Unable to open database: ", err)

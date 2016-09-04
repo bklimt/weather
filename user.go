@@ -13,6 +13,7 @@ type User struct {
 }
 
 func getUser(username, password string) (*User, error) {
+	LoadDb()
 	q, err := db.Prepare("select salt, bcrypt from user where name=?")
 	if err != nil {
 		return nil, err
@@ -67,6 +68,7 @@ func (user User) Save(password string) error {
 		return err
 	}
 
+	LoadDb()
 	stmt, err := db.Prepare("INSERT INTO user (name, salt, bcrypt) values (?, ?, ?)")
 	if err != nil {
 		log.Printf("Unable to prepare statement: %v\n", err)

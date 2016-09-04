@@ -25,6 +25,8 @@ func NewStreamToken(sessionToken SessionToken) (StreamToken, error) {
 		return StreamToken(""), errors.New("Not authorized.")
 	}
 
+	LoadDb()
+	log.Printf("NewStreamToken")
 	stmt, err := db.Prepare("insert into stream_token (token, username, created) values (?, ?, ?)")
 	if err != nil {
 		return StreamToken(""), err
@@ -46,6 +48,8 @@ func NewStreamToken(sessionToken SessionToken) (StreamToken, error) {
 // This can be useful for example when navigating directly to a stream in Chrome, because
 // Chrome actually makes two requests for the content.
 func (token StreamToken) isRecent() bool {
+	LoadDb()
+	log.Printf("isRecent")
 	stmt, err := db.Prepare("select * from stream_token where token = ? and deleted > ?")
 	if err != nil {
 		log.Printf("Error creating recent stream token query: %v\n", err)
@@ -71,6 +75,8 @@ func (token StreamToken) isRecent() bool {
 
 // Returns true if this stream token is still good, and deletes it.
 func (token StreamToken) redeem() bool {
+	LoadDb()
+	log.Printf("redeem")
 	stmt, err := db.Prepare("select * from stream_token where token = ? and deleted is null")
 	if err != nil {
 		log.Printf("Error creating stream token query: %v\n", err)

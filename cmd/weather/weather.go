@@ -21,6 +21,8 @@ func main() {
 	config := flag.String("config", "./config.json", "Database config file.")
 	streamUrl := flag.String("audio_stream_url", "http://example.com:8000/stream.ogg", "Audio stream URL.")
 	card := flag.String("audio_card", "default", "The audio card to change the volume of.")
+	enableVolume := flag.Bool("enable_volume", false, "Whether to control the volume.")
+	enableHue := flag.Bool("enable_hue", false, "Whether to control the Hue bulbs.")
 
 	templateFlags()
 	hue.Flags()
@@ -34,20 +36,27 @@ func main() {
 		log.Fatal("Unable to load static file.")
 	}
 
-	h := hue.FromFlags()
+	var h *hue.Hue
+	if *enableHue {
+		h = hue.FromFlags()
+	}
 
 	u, err := url.Parse(*streamUrl)
 	if err != nil {
 		log.Fatal("Unable to parse stream url: %v", streamUrl)
 	}
 
-	r.Handle("/", &indexHandler{*card, h}).Methods("GET")
+	r.Handle("/", &indexHandler{*card, h, *enableVolume}).Methods("GET")
 	r.HandleFunc("/session", handleSessionPost).Methods("POST")
 	r.HandleFunc("/session", handleSessionDelete).Methods("DELETE")
-	r.Handle("/volume", &volumeGetHandler{*card}).Methods("GET")
-	r.Handle("/volume", &volumePutHandler{*card}).Methods("PUT")
-	r.Handle("/light", &lightsGetHandler{h}).Methods("GET")
-	r.Handle("/light/{id}", &lightPutHandler{h}).Methods("PUT")
+	if *enableVolume {
+		r.Handle("/volume", &volumeGetHandler{*card}).Methods("GET")
+		r.Handle("/volume", &volumePutHandler{*card}).Methods("PUT")
+	}
+	if *enableHue {
+		r.Handle("/light", &lightsGetHandler{h}).Methods("GET")
+		r.Handle("/light/{id}", &lightPutHandler{h}).Methods("PUT")
+	}
 	r.HandleFunc("/check_stream", handleCheckStreamPost).Methods("POST")
 	r.Handle("/stream", &streamGetHandler{u}).Methods("GET")
 

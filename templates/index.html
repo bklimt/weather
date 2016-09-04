@@ -41,6 +41,7 @@
     <div data-role="page">
       <div data-role="main" class="ui-content">
 
+        {{ if .ShowVolume }}
         <div class="ui-corner-all custom-corners">
           <div class="ui-bar ui-bar-a">
             <h3>White Noise</h3>
@@ -52,7 +53,9 @@
             </div>
           </div>
         </div>
+        {{ end }}
 
+        {{ if .Lights }}
         <div class="ui-corner-all custom-corners">
           <div class="ui-bar ui-bar-a">
             <h3>Lights</h3>
@@ -84,6 +87,7 @@
             {{ end }}
           </div>
         </div>
+        {{ end }}
 
         <div class="ui-corner-all custom-corners">
           <div class="ui-bar ui-bar-a">

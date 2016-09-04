@@ -34,6 +34,7 @@ func NewSession(username, password string) (*Session, error) {
 		return nil, err
 	}
 
+	LoadDb()
 	stmt, err := db.Prepare("insert into session (token, username, expires) values (?, ?, ?)")
 	if err != nil {
 		return nil, err
@@ -54,6 +55,7 @@ func NewSession(username, password string) (*Session, error) {
 // Deletes the session from the website's database so that it can no longer be used for requests.
 // It's good to do this on logout, in addition to sending back an invalid cookie.
 func (session SessionToken) Delete() error {
+	LoadDb()
 	stmt, err := db.Prepare("update session set deleted=? where token=?")
 	if err != nil {
 		return err
@@ -70,6 +72,7 @@ func (session SessionToken) Delete() error {
 
 // Fetches all the information about this session.
 func (token SessionToken) GetSession() (*Session, error) {
+	LoadDb()
 	stmt, err := db.Prepare("select username, expires from session where token = ? and expires > ? and deleted is null")
 	if err != nil {
 		return nil, err
